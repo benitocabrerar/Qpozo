@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Caudal de Pozo - Flujo en Estado Estable</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px 40px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        .input-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            width: 30%;
+            min-width: 150px;
+        }
+        .input-group label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result {
+            margin-top: 20px;
+            background: #e7f3e7;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Calculadora de Caudal de Pozo</h1>
+    <p>Ingrese o ajuste los valores de los parámetros del yacimiento y la configuración del pozo para calcular automáticamente el caudal de producción. El resultado, en barriles de petróleo por día (STB/día), se actualizará al modificar cualquier valor.</p>
+    
+    <div class="input-container">
+        <div class="input-group">
+            <label for="k">Permeabilidad (k) en md:</label>
+            <input type="number" id="k" placeholder="Ej: 500" value="500" title="Permeabilidad de la formación al petróleo (md)" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="h">Espesor del Yacimiento (h) en ft:</label>
+            <input type="number" id="h" placeholder="Ej: 20" value="20" title="Espesor del yacimiento en pies" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="pe">Presión del Yacimiento (pe) en psi:</label>
+            <input type="number" id="pe" placeholder="Ej: 3550" value="3550" title="Presión inicial del yacimiento en psi" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="pwf">Presión de Fondo (pwf) en psi:</label>
+            <input type="number" id="pwf" placeholder="Ej: 1200" value="1200" title="Presión en el fondo del pozo en psi" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="Bo">Factor Volumétrico (Bo):</label>
+            <input type="number" id="Bo" placeholder="Ej: 1.254" step="0.001" value="1.254" title="Factor volumétrico del petróleo en el yacimiento" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="mu_o">Viscosidad del Petróleo (µ) en cp:</label>
+            <input type="number" id="mu_o" placeholder="Ej: 2" step="0.1" value="2" title="Viscosidad del petróleo en centipoise (cp)" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="re">Radio de Drenaje (re) en ft:</label>
+            <input type="number" id="re" placeholder="Ej: 2000" value="2000" title="Radio de drenaje del pozo en pies" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="rw">Diámetro del Pozo (rw) en pulgadas:</label>
+            <input type="number" id="rw" placeholder="Ej: 8.5" step="0.1" value="8.5" title="Diámetro del pozo en pulgadas (se convertirá automáticamente a radio en pies)" onchange="calculateFlowRate()" required>
+        </div>
+        <div class="input-group">
+            <label for="S">Factor de Daño (S):</label>
+            <input type="number" id="S" placeholder="Ej: 2" step="0.1" value="2" title="Factor de daño cerca del pozo (adimensional)" onchange="calculateFlowRate()" required>
+        </div>
+    </div>
+
+    <div id="result" class="result">El caudal de producción estimado es de: <strong>0 STB/día</strong></div>
+</div>
+
+<script>
+    function calculateFlowRate() {
+        // Obtener valores de los campos de entrada
+        const k = parseFloat(document.getElementById('k').value);
+        const h = parseFloat(document.getElementById('h').value);
+        const pe = parseFloat(document.getElementById('pe').value);
+        const pwf = parseFloat(document.getElementById('pwf').value);
+        const Bo = parseFloat(document.getElementById('Bo').value);
+        const mu_o = parseFloat(document.getElementById('mu_o').value);
+        const re = parseFloat(document.getElementById('re').value);
+        
+        // Convertir el diámetro del pozo en radio en pies
+        const diameter_rw_in_inches = parseFloat(document.getElementById('rw').value);
+        const rw = (diameter_rw_in_inches / 2) / 12; // Convertir de pulgadas a pies
+        const S = parseFloat(document.getElementById('S').value);
+
+        // Calcular cada paso
+        const pressureDifference = pe - pwf;
+        const re_rw_ratio = re / rw;
+        const ln_re_rw = Math.log(re_rw_ratio);
+        const Bo_mu_o_factor = 141.2 * Bo * mu_o;
+        const denominator = Bo_mu_o_factor * (ln_re_rw + S);
+        const numerator = k * h * pressureDifference;
+
+        // Calcular el caudal de producción (q)
+        const q = numerator / denominator;
+
+        // Mostrar el resultado formateado
+        document.getElementById('result').innerHTML = `El caudal de producción estimado es de: <strong>${q.toFixed(2)} STB/día</strong>`;
+    }
+
+    // Cálculo inicial al cargar la página con valores por defecto
+    calculateFlowRate();
+</script>
+
+</body>
+</html>
